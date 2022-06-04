@@ -7,7 +7,7 @@ HEIGHT = 600
 WIDTH = 1000
 COL_A = '#36383a'
 COL_B = '#2b2b2b'
-COL_Bd = '#323232'
+COL_Bl = '#303030'
 COL_C = '#3c839d'
 COL_HI = '#5ba5eb'
 
@@ -45,12 +45,10 @@ def addCircle():
     objectsArr.append(circle)
     canvas.create_oval(circle.bound.e, circle.bound.n, circle.bound.w, circle.bound.s,
                        fill='green', outline='darkgreen', width=2)
+    tk.Button(objListBox, text=circle.name, anchor='w', bd=0, fg='white', bg=COL_B, activebackground=COL_HI)
+    objListBox.insert('end', circle.name)
     if Placeables.Circle.index % 2 == 1:
-        tk.Button(objListBox, text=circle.name, anchor='w', bd=0, fg='white', bg=COL_B, activebackground=COL_HI)\
-            .pack(fill='x', side='top')
-    else:
-        tk.Button(objListBox, text=circle.name, anchor='w', bd=0, fg='white', bg=COL_Bd, activebackground=COL_HI) \
-            .pack(fill='x', side='top')
+        objListBox.itemconfig(objListBox.size() - 1, bg=COL_Bl)  # breaks when other types are implemented
 
 
 root = tk.Tk()
@@ -104,14 +102,18 @@ coord = 10, 50, 240, 210
 arc = canvas.create_arc(coord, start=0, extent=150, fill="red")
 
 # ---INSPECTOR-----------------------------------------------------
-objListBox = tk.Frame(inspector, bg=COL_B, relief='sunken', bd=1)
+objListBox = tk.Listbox(inspector, bg=COL_A, relief='sunken', highlightthickness=0)
+olb_scrollbar = tk.Scrollbar(objListBox, width=10, command=objListBox.yview)
+olb_scrollbar.pack(side='right', fill='y')
+objListBox.configure(yscrollcommand=olb_scrollbar.set)
 objListBox.place(anchor='n', y=50, relx=0.5, relwidth=0.75, height=300)
+tk.Label(inspector, text='Objects List', fg='white', bg=COL_A).place(anchor='n', y=29, relx=0.25)
 
 # label
 toolbar_label = tk.Label(toolbar, text="Toolbar", bg='red')
 toolbar_label.pack()
 inspector_label = tk.Label(inspector, text="Inspector", bg='yellow')
-inspector_label.pack()
+# inspector_label.pack()
 canvas_label = tk.Label(canvas, text="Canvas", bg='green')
 canvas_label.pack()
 shelf_label = tk.Label(shelf, text="Shelf", bg='orange')
