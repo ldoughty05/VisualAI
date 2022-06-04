@@ -1,15 +1,18 @@
-# 6/2/2022 Project day 3
+# 6/3/2022 Project day 4
 
 import tkinter as tk
-from tkinter import ttk
+import Placeables
 
 HEIGHT = 600
 WIDTH = 1000
 COL_A = '#36383a'
 COL_B = '#2b2b2b'
+COL_Bd = '#323232'
 COL_C = '#3c839d'
+COL_HI = '#5ba5eb'
 
 rclickCanvasPos = (0, 0)  # global variables like this are discouraged. Make it into a class and save as instance?
+objectsArr = []
 
 
 def pan_start(event):
@@ -31,15 +34,23 @@ def do_popupMenu(event):
 
 def createGridLines(sizeX, sizeY, gridSpacing):
     for x in range(int(sizeX / gridSpacing)):  # vertical lines
-        line = canvas.create_line(x * gridSpacing, 0, x * gridSpacing, sizeY, width=1, fill=COL_C)
+        canvas.create_line(x * gridSpacing, 0, x * gridSpacing, sizeY, width=1, fill=COL_C)
     for y in range(int(sizeY / gridSpacing)):  # vertical lines
-        line = canvas.create_line(0, y * gridSpacing, sizeX, y * gridSpacing, width=1, fill=COL_C)
+        canvas.create_line(0, y * gridSpacing, sizeX, y * gridSpacing, width=1, fill=COL_C)
 
 
-def addCircle(radius=25):
-    oval = canvas.create_oval(rclickCanvasPos[0] - radius, rclickCanvasPos[1] - radius,
-                              rclickCanvasPos[0] + radius, rclickCanvasPos[1] + radius,
-                              fill='green', outline='darkgreen', width=2)
+def addCircle():
+    global objectsArr
+    circle = Placeables.Circle(rclickCanvasPos[0], rclickCanvasPos[1], 25)
+    objectsArr.append(circle)
+    canvas.create_oval(circle.bound.e, circle.bound.n, circle.bound.w, circle.bound.s,
+                       fill='green', outline='darkgreen', width=2)
+    if Placeables.Circle.index % 2 == 1:
+        tk.Button(objListBox, text=circle.name, anchor='w', bd=0, fg='white', bg=COL_B, activebackground=COL_HI)\
+            .pack(fill='x', side='top')
+    else:
+        tk.Button(objListBox, text=circle.name, anchor='w', bd=0, fg='white', bg=COL_Bd, activebackground=COL_HI) \
+            .pack(fill='x', side='top')
 
 
 root = tk.Tk()
@@ -69,15 +80,14 @@ scrollbarY = tk.Scrollbar(canvas, orient='vertical', command=canvas.yview)
 # scrollbarX.pack(side="bottom", fill="x")
 # scrollbarY.pack(side='right', fill='y')
 canvas.configure(scrollregion=(0, 0, 2000, 1500), xscrollcommand=scrollbarX.set, yscrollcommand=scrollbarY.set)
-canvas.yview_moveto('0.5')
-canvas.xview_moveto('0.5')
-
+canvas.yview_moveto(0.5)
+canvas.xview_moveto(0.5)
 
 canvas.bind('<ButtonPress-2>', pan_start)
 canvas.bind('<B2-Motion>', pan_move)
 # right click menu
-m = tk.Menu(root, tearoff=0, bg=COL_A, fg='white', activebackground=COL_C)
-addmenu = tk.Menu(root, tearoff=0, bg=COL_A, fg='white', activebackground=COL_C)
+m = tk.Menu(root, tearoff=0, bg=COL_A, fg='white', activebackground=COL_HI)
+addmenu = tk.Menu(root, tearoff=0, bg=COL_A, fg='white', activebackground=COL_HI)
 m.add_cascade(label='Add', menu=addmenu)
 m.add_separator()
 m.add_command(label="Cut")
@@ -87,16 +97,17 @@ m.add_command(label="Reload")
 
 addmenu.add_command(label='Circle', command=addCircle)
 
-
 canvas.bind("<Button-3>", do_popupMenu)
 # grid
-
-
 createGridLines(2000, 1500, 100)
 coord = 10, 50, 240, 210
 arc = canvas.create_arc(coord, start=0, extent=150, fill="red")
 
-# labels
+# ---INSPECTOR-----------------------------------------------------
+objListBox = tk.Frame(inspector, bg=COL_B, relief='sunken', bd=1)
+objListBox.place(anchor='n', y=50, relx=0.5, relwidth=0.75, height=300)
+
+# label
 toolbar_label = tk.Label(toolbar, text="Toolbar", bg='red')
 toolbar_label.pack()
 inspector_label = tk.Label(inspector, text="Inspector", bg='yellow')
