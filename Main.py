@@ -47,8 +47,8 @@ def addPlaceableToList(placeable):
 def addCircle():
     global objectsArr
     circle = Placeables.Circle(rclickCanvasPos[0], rclickCanvasPos[1], 25)
+    circle.setDrawing(createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0))
     objectsArr.append(circle)
-    createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0)
     addPlaceableToList(circle)
 
 
@@ -56,12 +56,23 @@ def addLayerBlock():
     spacing = 40
     global objectsArr
     box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 5, spacing)
+    box.setDrawing(canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
+                                           fill=box.color, outline='white', width=2, tags="draggable"))
     objectsArr.append(box)
-    canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
-                            fill=box.color, outline='white', width=2)
     for n in range(box.size):
         createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, 25, fill=box.ncolor, width=0)
     addPlaceableToList(box)
+
+
+def dragPlaceable(event):
+    for p in reversed(objectsArr):  # last to first in list
+        if p.bound.w <= canvas.canvasx(event.x) <= p.bound.e and p.bound.n <= canvas.canvasy(event.y) <= p.bound.s:
+            print(f"{p.name}: {p.x}, {p.y}")
+            canvas.move(p.drawing, canvas.canvasx(event.x) - p.x, canvas.canvasy(event.y) - p.y)
+            p.setX(canvas.canvasx(event.x))
+            p.setY(canvas.canvasy(event.y))
+
+            return
 
 
 root = tk.Tk()
@@ -110,6 +121,7 @@ addmenu.add_command(label='Circle', command=addCircle)
 addmenu.add_command(label='Layer', command=addLayerBlock)
 
 canvas.bind("<Button-3>", do_popupMenu)
+canvas.tag_bind('draggable', '<B1-Motion>', dragPlaceable)
 # grid
 createGridLines(2000, 1500, 100)
 coord = 10, 50, 240, 210

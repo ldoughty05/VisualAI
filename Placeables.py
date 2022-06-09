@@ -20,6 +20,16 @@ class Placeable:
         self.name = 'Empty'
         self.bound = None
         self.color = None
+        self.drawing = None
+
+    def setDrawing(self, d):
+        self.drawing = d
+
+    def setX(self, x):
+        self.x = x
+
+    def setY(self, y):
+        self.y = y
 
 
 class Circle(Placeable):
@@ -32,6 +42,14 @@ class Circle(Placeable):
         self.color = 'green'
         self.radius = r
         Circle.index += 1
+
+    def setX(self, x):
+        super().setX(x)
+        self.bound = BoundBox(self.x + self.radius, self.y + self.radius, self.x - self.radius, self.y - self.radius)
+
+    def setY(self, y):
+        super().setY(y)
+        self.bound = BoundBox(self.x + self.radius, self.y + self.radius, self.x - self.radius, self.y - self.radius)
 
 
 class Comment(Placeable):
@@ -53,5 +71,15 @@ class LayerBlock(Placeable):
         self.color = Const.COL_B
         self.ncolor = 'yellow'
         self.size = size
+        self.spacing = spacing
         LayerBlock.index += 1
 
+    def setX(self, x):
+        super().setX(x)
+        self.bound = BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
+                              self.y - self.spacing * self.size)
+
+    def setY(self, y):
+        super().setY(y)
+        self.bound = BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
+                              self.y - self.spacing * self.size)
