@@ -1,5 +1,12 @@
+import Constants as Const
+
+
 class BoundBox:
     def __init__(self, x0, y0, x1, y1):
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
         self.n = min(y0, y1)
         self.s = max(y0, y1)
         self.e = max(x0, x1)
@@ -34,3 +41,17 @@ class Comment(Placeable):
         self.bound = BoundBox(x + 100, y + 100, x - 100, y - 100)
         self.color = 'yellow'
         self.text = text
+
+
+class LayerBlock(Placeable):
+    index = 0
+
+    def __init__(self, x, y, size, spacing):  # assuming neuron radius is 50
+        super().__init__(x, y)
+        self.name = f'LayerBlock({LayerBlock.index})'
+        self.bound = BoundBox(x + spacing, y + spacing * size, x - spacing, y - spacing * size)
+        self.color = Const.COL_B
+        self.ncolor = 'yellow'
+        self.size = size
+        LayerBlock.index += 1
+
