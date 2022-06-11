@@ -18,9 +18,9 @@ class Placeable:
         self.x = x
         self.y = y
         self.name = 'Empty'
-        self.bound = None
-        self.color = None
-        self.drawing = None
+        self.bound = BoundBox
+        self.color = str
+        self.drawing = None  # maybe instead i say starting layer and how many layers to reduce memory usage
 
     def setDrawing(self, d):
         self.drawing = d
@@ -32,16 +32,18 @@ class Placeable:
         self.y = y
 
 
-class Circle(Placeable):
+class Node(Placeable):
     index = 0
 
     def __init__(self, x, y, r):
         super().__init__(x, y)
-        self.name = f'Circle({Circle.index})'
-        self.bound = BoundBox(x + r, y + r, x - r, y - r)
+        self.name = f'Node({Node.index})'
+        self.bound = BoundBox(x + r * 1.4, y + r * 1.4, x - r * 1.4, y - r * 1.4)  # *1.4 accounts for grab tab
         self.color = 'green'
+        self.tabcolor = Const.COL_B
+        self.tabOutlineCol = 'white'
         self.radius = r
-        Circle.index += 1
+        Node.index += 1
 
     def setX(self, x):
         super().setX(x)
@@ -69,6 +71,7 @@ class LayerBlock(Placeable):
         self.name = f'LayerBlock({LayerBlock.index})'
         self.bound = BoundBox(x + spacing, y + spacing * size, x - spacing, y - spacing * size)
         self.color = Const.COL_B
+        self.outlineCol = 'white'
         self.ncolor = 'yellow'
         self.size = size
         self.spacing = spacing

@@ -5,6 +5,8 @@ import Placeables
 import Constants as Const
 
 rclickCanvasPos = (0, 0)  # global variables like this are discouraged. Make it into a class and save as instance?
+lastLeftClickCanvasPos = (0, 0)
+heldPlaceable = None
 objectsArr = []
 
 
@@ -33,7 +35,7 @@ def createGridLines(sizeX, sizeY, gridSpacing):
 
 
 def createCircle(canv, x, y, r, **kwargs):
-    canv.create_oval(x + r, y + r, x - r, y - r, kwargs)
+    return canv.create_oval(x + r, y + r, x - r, y - r, kwargs)
 
 
 def addPlaceableToList(placeable):
@@ -46,8 +48,10 @@ def addPlaceableToList(placeable):
 
 def addCircle():
     global objectsArr
-    circle = Placeables.Circle(rclickCanvasPos[0], rclickCanvasPos[1], 25)
-    circle.setDrawing(createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0))
+    circle = Placeables.Node(rclickCanvasPos[0], rclickCanvasPos[1], 25)
+    circle.setDrawing((createCircle(canvas, circle.x, circle.y, circle.radius * 1.4, fill=circle.tabcolor,
+                                    outline=circle.tabOutlineCol, width=2, tags='draggable'),
+                       createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0)))
     objectsArr.append(circle)
     addPlaceableToList(circle)
 
@@ -56,23 +60,46 @@ def addLayerBlock():
     spacing = 40
     global objectsArr
     box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 5, spacing)
-    box.setDrawing(canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
-                                           fill=box.color, outline='white', width=2, tags="draggable"))
-    objectsArr.append(box)
+    tdrawlist = [canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
+                                         fill=box.color, outline=box.outlineCol, width=2,
+                                         tags='draggable')]
     for n in range(box.size):
-        createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, 25, fill=box.ncolor, width=0)
+        tdrawlist.append(createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, 25, fill=box.ncolor,
+                                      width=0))
+    box.setDrawing(tuple(tdrawlist))
+    objectsArr.append(box)
     addPlaceableToList(box)
 
 
-def dragPlaceable(event):
+def selectPlaceable(event):  # on B1 down     # doesn't consistenty register when clicking. Bug might be somewhere else
     for p in reversed(objectsArr):  # last to first in list
         if p.bound.w <= canvas.canvasx(event.x) <= p.bound.e and p.bound.n <= canvas.canvasy(event.y) <= p.bound.s:
-            print(f"{p.name}: {p.x}, {p.y}")
-            canvas.move(p.drawing, canvas.canvasx(event.x) - p.x, canvas.canvasy(event.y) - p.y)
-            p.setX(canvas.canvasx(event.x))
-            p.setY(canvas.canvasy(event.y))
-
+            global lastLeftClickCanvasPos
+            global heldPlaceable
+            lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
+            heldPlaceable = p
             return
+
+
+def dragPlaceable(event):  # on B1 motion
+    global lastLeftClickCanvasPos
+    if not isinstance(heldPlaceable, Placeables.Placeable):
+        return
+    if isinstance(heldPlaceable.drawing, tuple):
+        for e in heldPlaceable.drawing:
+            canvas.move(e, canvas.canvasx(event.x) - lastLeftClickCanvasPos[0],
+                        canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
+    else:
+        canvas.move(heldPlaceable.drawing, canvas.canvasx(event.x) - lastLeftClickCanvasPos[0],
+                    canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
+    heldPlaceable.setX(canvas.canvasx(event.x))
+    heldPlaceable.setY(canvas.canvasy(event.y))
+    lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
+
+
+def forgetPlaceable(event):  # on B1 up  # May be unnecessary
+    global heldPlaceable
+    heldPlaceable = None
 
 
 root = tk.Tk()
@@ -117,11 +144,13 @@ m.add_command(label="Copy")
 m.add_command(label="Paste")
 m.add_command(label="Reload")
 
-addmenu.add_command(label='Circle', command=addCircle)
+addmenu.add_command(label='Node', command=addCircle)
 addmenu.add_command(label='Layer', command=addLayerBlock)
 
 canvas.bind("<Button-3>", do_popupMenu)
+canvas.tag_bind('draggable', '<Button-1>', selectPlaceable)
 canvas.tag_bind('draggable', '<B1-Motion>', dragPlaceable)
+canvas.tag_bind('draggable', '<ButtonRelease-1>', forgetPlaceable)
 # grid
 createGridLines(2000, 1500, 100)
 coord = 10, 50, 240, 210
