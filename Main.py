@@ -39,8 +39,6 @@ def createCircle(canv, x, y, r, **kwargs):
 
 
 def addPlaceableToList(placeable):
-    tk.Button(objListBox, text=placeable.name, anchor='w', bd=0, fg='white', bg=Const.COL_B,
-              activebackground=Const.COL_HI)
     objListBox.insert('end', placeable.name)
     if len(objectsArr) % 2 == 1:
         objListBox.itemconfig(objListBox.size() - 1, bg=Const.COL_Bl)
@@ -48,8 +46,8 @@ def addPlaceableToList(placeable):
 
 def addCircle():
     global objectsArr
-    circle = Placeables.Node(rclickCanvasPos[0], rclickCanvasPos[1], 25)
-    circle.setDrawing((createCircle(canvas, circle.x, circle.y, circle.radius * 1.4, fill=circle.tabcolor,
+    circle = Placeables.Node(rclickCanvasPos[0], rclickCanvasPos[1], Const.NODE_RADIUS)
+    circle.setDrawing((createCircle(canvas, circle.x, circle.y, circle.radius * 1.8, fill=circle.tabcolor,
                                     outline=circle.tabOutlineCol, width=2, tags='draggable'),
                        createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0)))
     objectsArr.append(circle)
@@ -57,15 +55,15 @@ def addCircle():
 
 
 def addLayerBlock():
-    spacing = 40
+    spacing = Const.NODE_RADIUS * 1.5
     global objectsArr
     box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 5, spacing)
     tdrawlist = [canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
                                          fill=box.color, outline=box.outlineCol, width=2,
                                          tags='draggable')]
     for n in range(box.size):
-        tdrawlist.append(createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, 25, fill=box.ncolor,
-                                      width=0))
+        tdrawlist.append(createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, Const.NODE_RADIUS,
+                                      fill=box.ncolor, width=0))
     box.setDrawing(tuple(tdrawlist))
     objectsArr.append(box)
     addPlaceableToList(box)
@@ -92,8 +90,8 @@ def dragPlaceable(event):  # on B1 motion
     else:
         canvas.move(heldPlaceable.drawing, canvas.canvasx(event.x) - lastLeftClickCanvasPos[0],
                     canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
-    heldPlaceable.setX(canvas.canvasx(event.x))
-    heldPlaceable.setY(canvas.canvasy(event.y))
+    heldPlaceable.setX(heldPlaceable.x + canvas.canvasx(event.x) - lastLeftClickCanvasPos[0])
+    heldPlaceable.setY(heldPlaceable.y + canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
     lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
 
 
@@ -113,14 +111,21 @@ toolbar.place(relwidth=1, relheight=0.1)
 # panels
 panelA = tk.PanedWindow(root, bd=1, relief='raised', bg='gray', sashwidth=2, sashrelief='raised')
 panelA.place(relheight=0.9, relwidth=1, rely=0.1)
-inspector = tk.Frame(panelA, bg=Const.COL_A)
-panelA.add(inspector, width=root.winfo_width() / 3)
+# inspector = tk.Frame(panelA, bg=Const.COL_A)
+# panelA.add(inspector, width=root.winfo_width() / 3)
 panelB = tk.PanedWindow(panelA, orient='vertical', bd=0, relief='sunken', bg='gray', sashwidth=2, sashrelief='raised')
-panelA.add(panelB)
+panelA.add(panelB, width=root.winfo_width() * 2 / 3)
 canvas = tk.Canvas(panelB, bg=Const.COL_B, highlightthickness=0)
 panelB.add(canvas, height=Const.HEIGHT * 7 / 10)
 shelf = tk.Frame(panelB, bg=Const.COL_A)
 panelB.add(shelf)
+panelC = tk.PanedWindow(panelA, orient='vertical', bd=0, relief='sunken', bg='gray', sashwidth=2, sashrelief='raised')
+panelA.add(panelC)
+hierarchy = tk.Frame(panelA, bg=Const.COL_A)
+panelC.add(hierarchy, height=root.winfo_height() / 3)
+inspector = tk.Frame(panelA, bg=Const.COL_A)
+panelC.add(inspector)
+
 
 # ---CANVAS----------------------------------------------------------
 # pan and scroll
@@ -152,23 +157,23 @@ canvas.tag_bind('draggable', '<Button-1>', selectPlaceable)
 canvas.tag_bind('draggable', '<B1-Motion>', dragPlaceable)
 canvas.tag_bind('draggable', '<ButtonRelease-1>', forgetPlaceable)
 # grid
-createGridLines(2000, 1500, 100)
+createGridLines(2000, 1500, 50)
 coord = 10, 50, 240, 210
 arc = canvas.create_arc(coord, start=0, extent=150, fill="red")
 
-# ---INSPECTOR-----------------------------------------------------
-objListBox = tk.Listbox(inspector, bg=Const.COL_A, relief='sunken', highlightthickness=0)
+# ---HIERARCHY-----------------------------------------------------
+objListBox = tk.Listbox(hierarchy, bg=Const.COL_A, fg='white', relief='sunken', highlightthickness=0)
 olb_scrollbar = tk.Scrollbar(objListBox, width=10, command=objListBox.yview)
 # olb_scrollbar.pack(side='right', fill='y')
 objListBox.configure(yscrollcommand=olb_scrollbar.set)
-objListBox.place(anchor='n', y=50, relx=0.5, relwidth=0.75, height=300)
-tk.Label(inspector, text='Objects List', fg='white', bg=Const.COL_A).place(anchor='n', y=29, relx=0.25)
+objListBox.place(anchor='n', y=30, relx=0.5, relwidth=0.75, relheight=0.8, )
+tk.Label(hierarchy, text='Objects List', fg='white', bg=Const.COL_A).place(anchor='n', y=9, relx=0.25)
 
 # label
 toolbar_label = tk.Label(toolbar, text="Toolbar", bg='red')
 toolbar_label.pack()
 inspector_label = tk.Label(inspector, text="Inspector", bg='yellow')
-# inspector_label.pack()
+inspector_label.pack()
 canvas_label = tk.Label(canvas, text="Canvas", bg='green')
 canvas_label.pack()
 shelf_label = tk.Label(shelf, text="Shelf", bg='orange')
