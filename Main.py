@@ -6,7 +6,8 @@ import Constants as Const
 
 rclickCanvasPos = (0, 0)  # global variables like this are discouraged. Make it into a class and save as instance?
 lastLeftClickCanvasPos = (0, 0)
-heldPlaceable = None
+heldPlaceable = None  # this...
+inspectorFocus = None  # ... and this represent the same thing
 objectsArr = []
 
 
@@ -48,8 +49,9 @@ def addCircle():
     global objectsArr
     circle = Placeables.Node(rclickCanvasPos[0], rclickCanvasPos[1], Const.NODE_RADIUS)
     circle.setDrawing((createCircle(canvas, circle.x, circle.y, circle.radius * 1.8, fill=circle.tabcolor,
-                                    outline=circle.tabOutlineCol, width=2, tags='draggable'),
-                       createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0)))
+                                    outline=circle.tabOutlineCol, width=2, tags=('draggable', 'inspectable')),
+                       createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0,
+                                    tags='inspectable')))
     objectsArr.append(circle)
     addPlaceableToList(circle)
 
@@ -60,16 +62,18 @@ def addLayerBlock():
     box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 5, spacing)
     tdrawlist = [canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
                                          fill=box.color, outline=box.outlineCol, width=2,
-                                         tags='draggable')]
+                                         tags=('draggable', 'inspectable'))]
     for n in range(box.size):
         tdrawlist.append(createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, Const.NODE_RADIUS,
-                                      fill=box.ncolor, width=0))
+                                      fill=box.ncolor, width=0, tags='inspectable'))
     box.setDrawing(tuple(tdrawlist))
     objectsArr.append(box)
     addPlaceableToList(box)
 
 
-def selectPlaceable(event):  # on B1 down     # doesn't consistenty register when clicking. Bug might be somewhere else
+def selectPlaceable(
+        event):  # on B1 down # doesn't consistenty register when clicking. Bug might be somewhere else. Boundbox
+    # doesnt drag properly?
     for p in reversed(objectsArr):  # last to first in list
         if p.bound.w <= canvas.canvasx(event.x) <= p.bound.e and p.bound.n <= canvas.canvasy(event.y) <= p.bound.s:
             global lastLeftClickCanvasPos
@@ -100,6 +104,18 @@ def forgetPlaceable(event):  # on B1 up  # May be unnecessary
     heldPlaceable = None
 
 
+def setInspectorFocus(event):
+    global inspectorFocus
+    if inspectorFocus is not None:  # last inspectorFocus
+        canvas.itemconfig(inspectorFocus.drawing[0], outline='white')
+    for p in reversed(objectsArr):  # last to first in list
+        if p.bound.w <= canvas.canvasx(event.x) <= p.bound.e and p.bound.n <= canvas.canvasy(event.y) <= p.bound.s:
+            inspectorFocus = p
+            canvas.itemconfig(inspectorFocus.drawing[0], outline=Const.COL_HI)
+
+            return
+
+
 root = tk.Tk()
 root.title('Visual AI')
 root.geometry(f"{Const.WIDTH}x{Const.HEIGHT}")
@@ -125,7 +141,6 @@ hierarchy = tk.Frame(panelA, bg=Const.COL_A)
 panelC.add(hierarchy, height=root.winfo_height() / 3)
 inspector = tk.Frame(panelA, bg=Const.COL_A)
 panelC.add(inspector)
-
 
 # ---CANVAS----------------------------------------------------------
 # pan and scroll
@@ -156,6 +171,7 @@ canvas.bind("<Button-3>", do_popupMenu)
 canvas.tag_bind('draggable', '<Button-1>', selectPlaceable)
 canvas.tag_bind('draggable', '<B1-Motion>', dragPlaceable)
 canvas.tag_bind('draggable', '<ButtonRelease-1>', forgetPlaceable)
+canvas.tag_bind('inspectable', '<Button-1>', setInspectorFocus)
 # grid
 createGridLines(2000, 1500, 50)
 coord = 10, 50, 240, 210
