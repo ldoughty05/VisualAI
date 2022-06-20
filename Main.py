@@ -6,8 +6,7 @@ import Constants as Const
 
 rclickCanvasPos = (0, 0)  # global variables like this are discouraged. Make it into a class and save as instance?
 lastLeftClickCanvasPos = (0, 0)
-heldPlaceable = None  # this...
-inspectorFocus = None  # ... and this represent the same thing
+inspectorFocus = None
 objectsArr = []
 
 
@@ -45,13 +44,13 @@ def addPlaceableToList(placeable):
         objListBox.itemconfig(objListBox.size() - 1, bg=Const.COL_Bl)
 
 
-def addCircle():
+def addCircle():  # DEPRECIATED
     global objectsArr
-    circle = Placeables.Node(rclickCanvasPos[0], rclickCanvasPos[1], Const.NODE_RADIUS)
-    circle.setDrawing((createCircle(canvas, circle.x, circle.y, circle.radius * 1.8, fill=circle.tabcolor,
-                                    outline=circle.tabOutlineCol, width=2, tags=('draggable', 'inspectable')),
-                       createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0,
-                                    tags='inspectable')))
+    circle = Placeables.Solo(rclickCanvasPos[0], rclickCanvasPos[1], Const.NODE_RADIUS)
+    circle.drawing = (createCircle(canvas, circle.x, circle.y, circle.radius * 1.8, fill=circle.tabcolor,
+                                   outline=circle.tabOutlineCol, width=2, tags=('inspectable', 'draggable')),
+                      createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0,
+                                   tags='inspectable'))
     objectsArr.append(circle)
     addPlaceableToList(circle)
 
@@ -59,52 +58,48 @@ def addCircle():
 def addLayerBlock():
     spacing = Const.NODE_RADIUS * 1.5
     global objectsArr
-    box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 5, spacing)
-    tdrawlist = [canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,
+    box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 5)
+    tdrawlist = [canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,  # draw box
                                          fill=box.color, outline=box.outlineCol, width=2,
-                                         tags=('draggable', 'inspectable'))]
-    for n in range(box.size):
-        tdrawlist.append(createCircle(canvas, box.x, box.bound.n + n * 2 * spacing + spacing, Const.NODE_RADIUS,
-                                      fill=box.ncolor, width=0, tags='inspectable'))
-    box.setDrawing(tuple(tdrawlist))
+                                         tags=('inspectable', 'draggable'))]
+    for n in range(box.size):  # draw nodes
+        tdrawlist.append(createCircle(canvas, box.nodes[n].x, box.nodes[n].y, Const.NODE_RADIUS,
+                                      fill=box.ncolor, width=0, tags=('inspectable', 'linkable')))
+    box.drawing = tuple(tdrawlist)
     objectsArr.append(box)
     addPlaceableToList(box)
 
 
-def selectPlaceable(
-        event):  # on B1 down # doesn't consistenty register when clicking. Bug might be somewhere else. Boundbox
+def selectPlaceable(event):
+    # on B1 down # doesn't consistenty register when clicking. Bug might be somewhere else. Boundbox
     # doesnt drag properly?
-    for p in reversed(objectsArr):  # last to first in list
-        if p.bound.w <= canvas.canvasx(event.x) <= p.bound.e and p.bound.n <= canvas.canvasy(event.y) <= p.bound.s:
-            global lastLeftClickCanvasPos
-            global heldPlaceable
-            lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
-            heldPlaceable = p
-            return
+    print('placeableEvent')
+    global lastLeftClickCanvasPos
+    lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
 
 
 def dragPlaceable(event):  # on B1 motion
     global lastLeftClickCanvasPos
-    if not isinstance(heldPlaceable, Placeables.Placeable):
+    if not isinstance(inspectorFocus, Placeables.Placeable):
         return
-    if isinstance(heldPlaceable.drawing, tuple):
-        for e in heldPlaceable.drawing:
+    if isinstance(inspectorFocus.drawing, tuple):
+        for e in inspectorFocus.drawing:
             canvas.move(e, canvas.canvasx(event.x) - lastLeftClickCanvasPos[0],
                         canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
     else:
-        canvas.move(heldPlaceable.drawing, canvas.canvasx(event.x) - lastLeftClickCanvasPos[0],
+        canvas.move(inspectorFocus.drawing, canvas.canvasx(event.x) - lastLeftClickCanvasPos[0],
                     canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
-    heldPlaceable.setX(heldPlaceable.x + canvas.canvasx(event.x) - lastLeftClickCanvasPos[0])
-    heldPlaceable.setY(heldPlaceable.y + canvas.canvasy(event.y) - lastLeftClickCanvasPos[1])
+    inspectorFocus.x = inspectorFocus.x + canvas.canvasx(event.x) - lastLeftClickCanvasPos[0]
+    inspectorFocus.y = inspectorFocus.y + canvas.canvasy(event.y) - lastLeftClickCanvasPos[1]
     lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
 
 
 def forgetPlaceable(event):  # on B1 up  # May be unnecessary
-    global heldPlaceable
-    heldPlaceable = None
+    refreshInspector()
 
 
 def setInspectorFocus(event):
+    print("inspectorFocusEvent")
     global inspectorFocus
     if inspectorFocus is not None:  # last inspectorFocus
         canvas.itemconfig(inspectorFocus.drawing[0], outline='white')
@@ -112,8 +107,54 @@ def setInspectorFocus(event):
         if p.bound.w <= canvas.canvasx(event.x) <= p.bound.e and p.bound.n <= canvas.canvasy(event.y) <= p.bound.s:
             inspectorFocus = p
             canvas.itemconfig(inspectorFocus.drawing[0], outline=Const.COL_HI)
+            break
+    refreshInspector()
 
-            return
+
+def refreshInspector():
+    if len(inspector.winfo_children()) > 1:
+        print('multiple windows in inspector')
+    inspector.winfo_children()[0].destroy()  # destroys last inspBox
+    inspBox = tk.Frame(inspector, bg=Const.COL_A)
+    inspBox.place(width=inspector.winfo_width() - 20, x=10, relheight=1)
+    for attr, value in inspectorFocus.__dict__.items():
+        lnfr = tk.Frame(inspBox, bg=Const.COL_A, bd=0, relief='sunken')
+        lnfr.pack(fill='x')
+        lab = tk.Label(lnfr, bg=Const.COL_A, bd=0, fg='white', text=f'{attr} :  ', padx=0, pady=5)
+        lab.pack(side='left')
+        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, fg='white')
+        entry.pack(expand=True, side='left', fill='x')
+        if value is not None:
+            entry.insert('end', value)
+        entry.configure(state='disabled', disabledbackground=Const.COL_A, disabledforeground='white')
+
+
+def setLinkEnd(event):
+    print('\\linkEndEvent')
+    for end in reversed(objectsArr):  # last to first in list
+        if isinstance(end, Placeables.LayerBlock) and end != inspectorFocus:
+            if end.bound.w <= canvas.canvasx(event.x) <= end.bound.e \
+                    and end.bound.n <= canvas.canvasy(event.y) <= end.bound.s:
+                inspectorFocus.pushesTo = end
+                end.pullsFrom = inspectorFocus
+                refreshInspector()
+                drawNodeConnections()
+                break
+
+
+def drawNodeConnections():  # draws pushing connections only
+    for b in objectsArr:
+        if not isinstance(b, Placeables.LayerBlock) or b.pushesTo is None:  # looking for start of network
+            continue
+        for s in b.nodes:
+            for e in b.pushesTo.nodes:
+                canvas.create_line(s.x, s.y, e.x, e.y, fill='cyan')  # color based on inspObj.weights[s][e]
+
+
+def refreshCanvas():
+    #  move objects as opposed to redraw.
+    pass
+# ==========
 
 
 root = tk.Tk()
@@ -164,7 +205,7 @@ m.add_command(label="Copy")
 m.add_command(label="Paste")
 m.add_command(label="Reload")
 
-addmenu.add_command(label='Node', command=addCircle)
+addmenu.add_command(label='Solo', command=addCircle)
 addmenu.add_command(label='Layer', command=addLayerBlock)
 
 canvas.bind("<Button-3>", do_popupMenu)
@@ -172,10 +213,11 @@ canvas.tag_bind('draggable', '<Button-1>', selectPlaceable)
 canvas.tag_bind('draggable', '<B1-Motion>', dragPlaceable)
 canvas.tag_bind('draggable', '<ButtonRelease-1>', forgetPlaceable)
 canvas.tag_bind('inspectable', '<Button-1>', setInspectorFocus)
-# grid
+canvas.tag_bind('linkable', '<ButtonRelease-1>', setLinkEnd)
+
 createGridLines(2000, 1500, 50)
-coord = 10, 50, 240, 210
-arc = canvas.create_arc(coord, start=0, extent=150, fill="red")
+# grid
+
 
 # ---HIERARCHY-----------------------------------------------------
 objListBox = tk.Listbox(hierarchy, bg=Const.COL_A, fg='white', relief='sunken', highlightthickness=0)
@@ -184,6 +226,7 @@ olb_scrollbar = tk.Scrollbar(objListBox, width=10, command=objListBox.yview)
 objListBox.configure(yscrollcommand=olb_scrollbar.set)
 objListBox.place(anchor='n', y=30, relx=0.5, relwidth=0.75, relheight=0.8, )
 tk.Label(hierarchy, text='Objects List', fg='white', bg=Const.COL_A).place(anchor='n', y=9, relx=0.25)
+# ---INSPECTOR-------------------------------------------------------
 
 # label
 toolbar_label = tk.Label(toolbar, text="Toolbar", bg='red')

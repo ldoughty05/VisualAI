@@ -1,4 +1,5 @@
 import Constants as Const
+import Network as Net
 
 
 class BoundBox:
@@ -13,76 +14,73 @@ class BoundBox:
         self.w = min(x0, x1)
 
 
+class Node:
+    def __init__(self, parent, index):
+        self.parent = parent
+        self.index = index
+        #  self.neuron = Net.Neuron()
+
+    @property
+    def x(self):
+        return self.parent.x
+
+    @property
+    def y(self):
+        return self.parent.bound.n + self.index * 2 * self.parent.spacing + self.parent.spacing
+
+
 class Placeable:
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.name = 'Empty'
-        self.bound = BoundBox
         self.color = str
         self.drawing = None  # maybe instead i say starting layer and how many layers to reduce memory usage
 
-    def setDrawing(self, d):
-        self.drawing = d
 
-    def setX(self, x):
-        self.x = x
-
-    def setY(self, y):
-        self.y = y
-
-
-class Node(Placeable):
+class Solo(Placeable):  # DEPRECIATED
     index = 0
 
     def __init__(self, x, y, r):
         super().__init__(x, y)
-        self.name = f'Node({Node.index})'
-        self.bound = BoundBox(x + r * 1.4, y + r * 1.4, x - r * 1.4, y - r * 1.4)  # *1.4 accounts for grab tab
+        self.name = f'Solo({Solo.index})'
         self.color = 'green'
         self.tabcolor = Const.COL_B
         self.tabOutlineCol = 'white'
         self.radius = r
-        Node.index += 1
+        Solo.index += 1
 
-    def setX(self, x):
-        super().setX(x)
-        self.bound = BoundBox(self.x + self.radius, self.y + self.radius, self.x - self.radius, self.y - self.radius)
-
-    def setY(self, y):
-        super().setY(y)
-        self.bound = BoundBox(self.x + self.radius, self.y + self.radius, self.x - self.radius, self.y - self.radius)
-
-
-class Comment(Placeable):
-    def __init__(self, x, y, text):
-        super().__init__(x, y)
-        self.name = 'Comment'
-        self.bound = BoundBox(x + 100, y + 100, x - 100, y - 100)
-        self.color = 'yellow'
-        self.text = text
+    @property
+    def bound(self):
+        return BoundBox(self.x + self.radius * 1.4, self.y + self.radius * 1.4, self.x - self.radius * 1.4,
+                        self.y - self.radius * 1.4)  # 1.4 accounts for grab tab
 
 
 class LayerBlock(Placeable):
     index = 0
 
-    def __init__(self, x, y, size, spacing):  # assuming neuron radius is 50
+    def __init__(self, x, y, size):
         super().__init__(x, y)
         self.name = f'LayerBlock({LayerBlock.index})'
-        self.bound = BoundBox(x + spacing, y + spacing * size, x - spacing, y - spacing * size)
+        self.pushesTo = None
+        self.pullsFrom = None
         self.color = Const.COL_B
         self.outlineCol = 'white'
         self.ncolor = 'yellow'
-        self.size = size
-        self.spacing = spacing
+        self.spacing = Const.NODE_RADIUS * 1.5
+        self.nodes = tuple(Node(self, i) for i in range(size))
         LayerBlock.index += 1
 
-    def setX(self, x):
-        super().setX(x)
-        self.bound = BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
-                              self.y - self.spacing * self.size)
+    @property
+    def bound(self):
+        return BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
+                        self.y - self.spacing * self.size)
 
-    def setY(self, y):
-        super().setY(y)
-        self.bound = BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
-                              self.y - self.spacing * self.size)
+    @property
+    def size(self):
+        return len(self.nodes)
+
+    @size.setter
+    def size(self, value):
+        self.nodes = (Node(self, i) for i in range(value))
+
