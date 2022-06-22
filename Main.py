@@ -92,10 +92,12 @@ def dragPlaceable(event):  # on B1 motion
     inspectorFocus.x = inspectorFocus.x + canvas.canvasx(event.x) - lastLeftClickCanvasPos[0]
     inspectorFocus.y = inspectorFocus.y + canvas.canvasy(event.y) - lastLeftClickCanvasPos[1]
     lastLeftClickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
+    refreshCanvas()
 
 
 def forgetPlaceable(event):  # on B1 up  # May be unnecessary
     refreshInspector()
+    refreshCanvas()
 
 
 def setInspectorFocus(event):
@@ -144,16 +146,22 @@ def setLinkEnd(event):
 
 def drawNodeConnections():  # draws pushing connections only
     for b in objectsArr:
-        if not isinstance(b, Placeables.LayerBlock) or b.pushesTo is None:  # looking for start of network
+        if not isinstance(b, Placeables.LayerBlock) or b.pushesTo is None:  # or len(b.nodes[0].pushConnections) > 0
             continue
         for s in b.nodes:
             for e in b.pushesTo.nodes:
-                canvas.create_line(s.x, s.y, e.x, e.y, fill='cyan')  # color based on inspObj.weights[s][e]
+                s.pushConnections.append(canvas.create_line(s.x, s.y, e.x, e.y, fill='cyan', tags='nodeConnection'))
+                # makes push connections and stores ids in list per node  # color based on inspObj.weights[s][e]
 
 
 def refreshCanvas():
     #  move objects as opposed to redraw.
-    pass
+    for b in objectsArr:
+        if not isinstance(b, Placeables.LayerBlock) or b.pushesTo is None:  # looking for start of network
+            continue
+        for s in b.nodes:
+            for index, e in enumerate(b.pushesTo.nodes):
+                canvas.coords(s.pushConnections[index], s.x, s.y, e.x, e.y)
 # ==========
 
 

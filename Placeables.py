@@ -18,6 +18,7 @@ class Node:
     def __init__(self, parent, index):
         self.parent = parent
         self.index = index
+        self.pushConnections = []
         #  self.neuron = Net.Neuron()
 
     @property
