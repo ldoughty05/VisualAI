@@ -69,7 +69,7 @@ class LayerBlock(Placeable):
         self.outlineCol = 'white'
         self.ncolor = 'yellow'
         self.spacing = Const.NODE_RADIUS * 1.5
-        self.nodes = tuple(Node(self, i) for i in range(size))
+        self.nodes = list(Node(self, i) for i in range(size))
         LayerBlock.index += 1
 
     @property
@@ -83,5 +83,4 @@ class LayerBlock(Placeable):
 
     @size.setter
     def size(self, value):
-        self.nodes = (Node(self, i) for i in range(value))
-
+        self.nodes = list(Node(self, i) for i in range(value))
