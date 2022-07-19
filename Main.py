@@ -20,12 +20,12 @@ def pan_move(event):
 
 
 def do_popupMenu(event):
+    global rclickCanvasPos
+    rclickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
     try:
         m.tk_popup(event.x_root, event.y_root)
     finally:
         m.grab_release()
-        global rclickCanvasPos
-        rclickCanvasPos = (canvas.canvasx(event.x), canvas.canvasy(event.y))
 
 
 def createGridLines(sizeX, sizeY, gridSpacing):
@@ -45,28 +45,30 @@ def addPlaceableToList(placeable):
         objListBox.itemconfig(objListBox.size() - 1, bg=Const.COL_Bl)
 
 
-def addCircle():  # DEPRECIATED
-    global objectsArr
-    circle = Placeables.Solo(rclickCanvasPos[0], rclickCanvasPos[1], Const.NODE_RADIUS)
-    circle.drawing = (createCircle(canvas, circle.x, circle.y, circle.radius * 1.8, fill=circle.tabcolor,
-                                   outline=circle.tabOutlineCol, width=2, tags=('inspectable', 'draggable')),
-                      createCircle(canvas, circle.x, circle.y, circle.radius, fill=circle.color, width=0,
-                                   tags='inspectable'))
-    objectsArr.append(circle)
-    addPlaceableToList(circle)
-
-
 def drawLayerBlockShape(box: Placeables.LayerBlock):  # draws and populates drawing list of inputted LayerBlock object
     box.drawing = [canvas.create_rectangle(box.bound.x0, box.bound.y0, box.bound.x1, box.bound.y1,  # draw box
                                            fill=box.color, outline=box.outlineCol, width=2,
                                            tags=('inspectable', 'draggable'))]
-    for n in range(box.size):  # draw nodes
-        box.drawing.append(createCircle(canvas, box.nodes[n].x, box.nodes[n].y, Const.NODE_RADIUS,
+    #  LayerBlock.size setter limits bounding box
+    if box.size <= Const.MAX_LAYER_DRAW_LENGTH:
+        for n in range(box.size):  # draw nodes
+            box.drawing.append(createCircle(canvas, box.nodes[n].x, box.nodes[n].y, Const.NODE_RADIUS,
+                                            fill=box.ncolor, width=0, tags=('inspectable', 'linkable')))
+    else:
+        for n in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+            box.drawing.append(createCircle(canvas, box.nodes[n].x, box.nodes[n].y, Const.NODE_RADIUS,
+                                            fill=box.ncolor, width=0, tags=('inspectable', 'linkable')))
+        box.drawing.append(canvas.create_text(box.nodes[Const.MAX_LAYER_DRAW_LENGTH - 2].x,
+                                              box.nodes[Const.MAX_LAYER_DRAW_LENGTH - 2].y,
+                                              text=str(box.size - Const.MAX_LAYER_DRAW_LENGTH + 1), fill='white'))
+        box.drawing.append(createCircle(canvas, box.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                                        box.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y, Const.NODE_RADIUS,
                                         fill=box.ncolor, width=0, tags=('inspectable', 'linkable')))
 
 
 def addLayerBlock():
     global objectsArr
+    global rclickCanvasPos
     box = Placeables.LayerBlock(rclickCanvasPos[0], rclickCanvasPos[1], 6)
     drawLayerBlockShape(box)
     objectsArr.append(box)
@@ -127,55 +129,59 @@ def refreshInspector():
         tname = tk.StringVar(value=inspectorFocus.name)
 
         def setName(*args):
-            try:
-                inspectorFocus.name = tname.get()
-            finally:
+            if not isinstance(inspectorFocus, Placeables.LayerBlock):
                 return
+            inspectorFocus.name = tname.get()
 
         tname.trace('w', setName)
         lnfr = tk.Frame(inspBox, bg=Const.COL_A, bd=0, relief='sunken')
         lnfr.pack(fill='x')
         lab = tk.Label(lnfr, bg=Const.COL_A, bd=0, fg='white', text='Name :  ', padx=0, pady=5)
         lab.pack(side='left')
-        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, fg='white', textvariable=tname)
+        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, highlightthickness=0, fg='white', textvariable=tname)
         entry.pack(expand=True, side='left', fill='x')
 
         # Size
         tsize = tk.IntVar(value=inspectorFocus.size)
 
         def setSize(*args):
-            try:  # sweeping problem under the rug  # got "" but looking for type int
-                inspectorFocus.size = tsize.get()
-                if isinstance(inspectorFocus, Placeables.LayerBlock):
-                    redrawObj(inspectorFocus)
-            finally:
+            if not isinstance(inspectorFocus, Placeables.LayerBlock):
                 return
+            try:
+                tsize.get()
+            except tk.TclError:
+                return
+            destroyConnectionDrawings(inspectorFocus)
+            inspectorFocus.size = tsize.get()
+            redrawObj(inspectorFocus)
+            if inspectorFocus.pushesTo is not None:
+                drawNodeConnections(inspectorFocus)  # push connections
+            if inspectorFocus.pullsFrom is not None:
+                drawNodeConnections(inspectorFocus.pullsFrom)  # pull connections
 
         tsize.trace('w', setSize)
         lnfr = tk.Frame(inspBox, bg=Const.COL_A, bd=0, relief='sunken')
         lnfr.pack(fill='x')
         lab = tk.Label(lnfr, bg=Const.COL_A, bd=0, fg='white', text='Size :  ', padx=0, pady=5)
         lab.pack(side='left')
-        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, fg='white', textvariable=tsize)
+        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, highlightthickness=0, fg='white', textvariable=tsize)
         entry.pack(expand=True, side='left', fill='x')
 
         # Node Color
         tncol = tk.StringVar(value=inspectorFocus.ncolor)
 
         def setNCol(*args):
-            try:
-                inspectorFocus.ncolor = tncol.get()
-                if isinstance(inspectorFocus, Placeables.LayerBlock):
-                    redrawObj(inspectorFocus)
-            finally:
+            if not isinstance(inspectorFocus, Placeables.LayerBlock):
                 return
+            inspectorFocus.ncolor = tncol.get()
+            redrawObj(inspectorFocus)
 
         tncol.trace('w', setNCol)
         lnfr = tk.Frame(inspBox, bg=Const.COL_A, bd=0, relief='sunken')
         lnfr.pack(fill='x')
         lab = tk.Label(lnfr, bg=Const.COL_A, bd=0, fg='white', text='Node Color :  ', padx=0, pady=5)
         lab.pack(side='left')
-        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, fg='white', textvariable=tncol)
+        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, highlightthickness=0, fg='white', textvariable=tncol)
         entry.pack(expand=True, side='left', fill='x')
 
     lnfr = tk.Frame(inspBox, bg=Const.COL_A, bd=0, relief='sunken')
@@ -188,7 +194,7 @@ def refreshInspector():
         lnfr.pack(fill='x')
         lab = tk.Label(lnfr, bg=Const.COL_A, bd=0, fg='white', text=f'{attr} :  ', padx=0, pady=5)
         lab.pack(side='left')
-        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, fg='white')
+        entry = tk.Entry(lnfr, bg=Const.COL_Bl, bd=1, highlightthickness=0, fg='white')
         entry.pack(expand=True, side='left', fill='x')
         if value is not None:
             entry.insert('end', value)
@@ -210,16 +216,48 @@ def setLinkEnd(event):
                 break
 
 
-def drawNodeConnections(sobj: Placeables.LayerBlock):
-    # draws pushing connections only   # sobj is obj where connection starts ie pushed from
-    for s in sobj.nodes:
-        for oldln in s.pushConnections:
-            canvas.delete(oldln)
-        s.pushConnections = []
-        for e in sobj.pushesTo.nodes:
-            s.pushConnections.append(canvas.create_line(s.x, s.y, e.x, e.y, fill='cyan', arrow='last',
-                                                        tags='nodeConnection'))
-            # makes push connections and stores ids in list per node  # color based on inspObj.weights[s][e]
+def drawNodeConnections(pusher: Placeables.LayerBlock):
+    # draws pushing connections only
+    # makes push connections and stores ids in list per node  # color based on inspObj.weights[s][e]
+    # pusher is layer
+    def distributeThisNodeToShortened(fnode):  # upper portion only
+        for tn in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+            tn = pusher.pushesTo.nodes[tn]
+            fnode.pushConnections.append(canvas.create_line(fnode.x, fnode.y, tn.x, tn.y, fill='cyan', arrow='last',
+                                                            tags='nodeConnection'))
+        fnode.pushConnections.append(
+            canvas.create_line(fnode.x, fnode.y,
+                               pusher.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                               pusher.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y,
+                               fill='cyan', arrow='last', tags='nodeConnection'))
+
+    def distributeThisNode(fnode):
+        for tn in pusher.pushesTo.nodes:
+            fnode.pushConnections.append(canvas.create_line(fnode.x, fnode.y, tn.x, tn.y, fill='cyan', arrow='last',
+                                                            tags='nodeConnection'))
+
+    if pusher.size > Const.MAX_LAYER_DRAW_LENGTH and pusher.pushesTo.size > Const.MAX_LAYER_DRAW_LENGTH:  # both short
+        for s in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+            s = pusher.nodes[s]
+            s.pushConnections = []
+            distributeThisNodeToShortened(s)
+        pusher.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].pushCoonnections = []
+        distributeThisNodeToShortened(pusher.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1])
+    elif pusher.size > Const.MAX_LAYER_DRAW_LENGTH:  # Pusher is shortened
+        for s in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+            s = pusher.nodes[s]
+            s.pushConnections = []
+            distributeThisNode(s)
+        pusher.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].pushCoonnections = []
+        distributeThisNode(pusher.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1])
+    elif pusher.pushesTo.size > Const.MAX_LAYER_DRAW_LENGTH:  # Puller is shortened
+        for s in pusher.nodes:
+            s.pushConnections = []
+            distributeThisNodeToShortened(s)
+    else:  # neither are shortened
+        for s in pusher.nodes:
+            s.pushConnections = []
+            distributeThisNode(s)
 
 
 def redrawObj(obj: Placeables.LayerBlock):
@@ -228,25 +266,62 @@ def redrawObj(obj: Placeables.LayerBlock):
     drawLayerBlockShape(obj)
 
 
+def destroyConnectionDrawings(lar: Placeables.LayerBlock):  # deletes all push and pull connections
+    if lar.pullsFrom is not None:
+        for fn in lar.pullsFrom.nodes:
+            for fc in fn.pushConnections:
+                canvas.delete(fc)
+    for tn in lar.nodes:
+        for tc in tn.pushConnections:
+            canvas.delete(tc)
+
+
 def refreshCanvas():
     #  move objects as opposed to redraw.
     for b in objectsArr:
-
-        if not isinstance(b, Placeables.LayerBlock):
-            continue
-        while len(b.drawing) - 1 > b.size:  # -1 since box takes first spot  # if more drawn node circles than needed
-            b.drawing.pop()  # removes last element of list
-        if len(b.drawing) - 1 < b.size:  # draw more node circles
-            canvas.coords(b.drawing[0], b.bound.x0, b.bound.y0, b.bound.x1, b.bound.y1)
-            for n in range(b.size - (len(b.drawing) - 1)):
-                b.drawing.append(createCircle(canvas, b.nodes[len(b.drawing)-1].x, b.nodes[len(b.drawing)-1].y,
-                                              Const.NODE_RADIUS,
-                                              fill=b.ncolor, width=0, tags=('inspectable', 'linkable')))   # maye instead i just delete this layer then redraw?
-            # 0 index is the box, followed by circles
         if b.pushesTo is not None:
-            for s in b.nodes:
-                for index, e in enumerate(b.pushesTo.nodes):
-                    canvas.coords(s.pushConnections[index], s.x, s.y, e.x, e.y)
+            if b.size > Const.MAX_LAYER_DRAW_LENGTH and b.pushesTo.size > Const.MAX_LAYER_DRAW_LENGTH:  # both shortened
+                for s in range(Const.MAX_LAYER_DRAW_LENGTH - 2):  # moves pushing connections to top guys
+                    s = b.nodes[s]
+                    for index in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+                        e = b.pushesTo.nodes[index]
+                        canvas.coords(s.pushConnections[index], s.x, s.y, e.x, e.y)
+                    canvas.coords(s.pushConnections[Const.MAX_LAYER_DRAW_LENGTH - 2], s.x, s.y,
+                                  b.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                                  b.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y)
+                for index in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+                    e = b.pushesTo.nodes[index]
+                    canvas.coords(b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].pushConnections[index],
+                                  b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                                  b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y, e.x, e.y)
+                canvas.coords(b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].pushConnections[Const.MAX_LAYER_DRAW_LENGTH - 2],
+                              b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x, b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y,
+                              b.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                              b.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y)
+
+            elif b.size > Const.MAX_LAYER_DRAW_LENGTH:  # if  pusher is shortened
+                for s in range(Const.MAX_LAYER_DRAW_LENGTH - 2):  # moves pushing connections to top guys
+                    s = b.nodes[s]
+                    for index, e in enumerate(b.pushesTo.nodes):
+                        canvas.coords(s.pushConnections[index], s.x, s.y, e.x, e.y)
+                for index, e in enumerate(b.pushesTo.nodes):  # moves pushing connections to bottom guy
+                    canvas.coords(b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].pushConnections[index],
+                                  b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                                  b.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y, e.x, e.y)
+
+            elif b.pushesTo.size > Const.MAX_LAYER_DRAW_LENGTH:  # if puller is shortened
+                for s in b.nodes:
+                    for index in range(Const.MAX_LAYER_DRAW_LENGTH - 2):
+                        e = b.pushesTo.nodes[index]
+                        canvas.coords(s.pushConnections[index], s.x, s.y, e.x, e.y)
+                    canvas.coords(s.pushConnections[Const.MAX_LAYER_DRAW_LENGTH - 2], s.x, s.y,
+                                  b.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].x,
+                                  b.pushesTo.nodes[Const.MAX_LAYER_DRAW_LENGTH - 1].y)
+
+            else:  # neither is shortened
+                for s in b.nodes:
+                    for index, e in enumerate(b.pushesTo.nodes):
+                        canvas.coords(s.pushConnections[index], s.x, s.y, e.x, e.y)
 
 
 # ==========
@@ -254,23 +329,26 @@ if __name__ == '__main__':
     root = tk.Tk()
     root.title('Visual AI')
     root.geometry(f"{Const.WIDTH}x{Const.HEIGHT}")
-    root.update_idletasks()  # strangely necessary to use winfo
+    root.update_idletasks()  # strangely necessary to use winfox
 
     toolbar = tk.Frame(root, bg=Const.COL_A)
     toolbar.place(relwidth=1, relheight=0.1)
 
     # panels
-    panelA = tk.PanedWindow(root, bd=1, relief='raised', bg='gray', sashwidth=2, sashrelief='raised')
+    panelA = tk.PanedWindow(root, bd=1, relief='raised', bg=Const.COL_A, sashwidth=2,
+                            sashrelief='raised', sashpad=2)
     panelA.place(relheight=0.9, relwidth=1, rely=0.1)
     # inspector = tk.Frame(panelA, bg=Const.COL_A)
     # panelA.add(inspector, width=root.winfo_width() / 3)
-    panelB = tk.PanedWindow(panelA, orient='vertical', bd=0, relief='sunken', bg='gray', sashwidth=2, sashrelief='raised')
+    panelB = tk.PanedWindow(panelA, orient='vertical', bd=0, relief='sunken', bg=Const.COL_A, sashwidth=2,
+                            sashrelief='raised', sashpad=2)
     panelA.add(panelB, width=root.winfo_width() * 2 / 3)
     canvas = tk.Canvas(panelB, bg=Const.COL_B, highlightthickness=0)
     panelB.add(canvas, height=Const.HEIGHT * 7 / 10)
     shelf = tk.Frame(panelB, bg=Const.COL_A)
     panelB.add(shelf)
-    panelC = tk.PanedWindow(panelA, orient='vertical', bd=0, relief='sunken', bg='gray', sashwidth=2, sashrelief='raised')
+    panelC = tk.PanedWindow(panelA, orient='vertical', bd=0, relief='sunken', bg=Const.COL_A, sashwidth=2,
+                            sashrelief='raised', sashpad=2)
     panelA.add(panelC)
     hierarchy = tk.Frame(panelA, bg=Const.COL_A)
     panelC.add(hierarchy, height=root.winfo_height() / 3)
@@ -287,8 +365,8 @@ if __name__ == '__main__':
     canvas.yview_moveto(0.5)
     canvas.xview_moveto(0.5)
 
-    canvas.bind('<ButtonPress-2>', pan_start)
-    canvas.bind('<B2-Motion>', pan_move)
+    canvas.bind('<Shift-ButtonPress-1>', pan_start)
+    canvas.bind('<Shift-B1-Motion>', pan_move)
     # right click menu
     m = tk.Menu(root, tearoff=0, bg=Const.COL_A, fg='white', activebackground=Const.COL_HI)
     addmenu = tk.Menu(root, tearoff=0, bg=Const.COL_A, fg='white', activebackground=Const.COL_HI)
@@ -299,10 +377,9 @@ if __name__ == '__main__':
     m.add_command(label="Paste")
     m.add_command(label="Reload")
 
-    addmenu.add_command(label='Solo', command=addCircle)
     addmenu.add_command(label='Layer', command=addLayerBlock)
 
-    canvas.bind("<Button-3>", do_popupMenu)
+    canvas.bind("<Button-2>", do_popupMenu)  # Right click is B2 on mac but b3 everywhere else
     canvas.tag_bind('draggable', '<Button-1>', selectPlaceable)
     canvas.tag_bind('draggable', '<B1-Motion>', dragPlaceable)
     canvas.tag_bind('draggable', '<ButtonRelease-1>', forgetPlaceable)
@@ -311,7 +388,6 @@ if __name__ == '__main__':
 
     createGridLines(2000, 1500, 50)
     # grid
-
 
     # ---HIERARCHY-----------------------------------------------------
     objListBox = tk.Listbox(hierarchy, bg=Const.COL_A, fg='white', relief='sunken', highlightthickness=0)

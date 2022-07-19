@@ -39,24 +39,6 @@ class Placeable:
         self.drawing = None  # maybe instead i say starting layer and how many layers to reduce memory usage
 
 
-class Solo(Placeable):  # DEPRECIATED
-    index = 0
-
-    def __init__(self, x, y, r):
-        super().__init__(x, y)
-        self.name = f'Solo({Solo.index})'
-        self.color = 'green'
-        self.tabcolor = Const.COL_B
-        self.tabOutlineCol = 'white'
-        self.radius = r
-        Solo.index += 1
-
-    @property
-    def bound(self):
-        return BoundBox(self.x + self.radius * 1.4, self.y + self.radius * 1.4, self.x - self.radius * 1.4,
-                        self.y - self.radius * 1.4)  # 1.4 accounts for grab tab
-
-
 class LayerBlock(Placeable):
     index = 0
 
@@ -74,8 +56,11 @@ class LayerBlock(Placeable):
 
     @property
     def bound(self):
-        return BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
-                        self.y - self.spacing * self.size)
+        if self.size <= Const.MAX_LAYER_DRAW_LENGTH:
+            return BoundBox(self.x + self.spacing, self.y + self.spacing * self.size, self.x - self.spacing,
+                            self.y - self.spacing * self.size)
+        return BoundBox(self.x + self.spacing, self.y + self.spacing * Const.MAX_LAYER_DRAW_LENGTH,
+                        self.x - self.spacing, self.y - self.spacing * Const.MAX_LAYER_DRAW_LENGTH)
 
     @property
     def size(self):

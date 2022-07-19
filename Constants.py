@@ -6,6 +6,7 @@ COL_B = '#2b2b2b'
 COL_Bl = '#303030'
 COL_C = '#3c839d'
 COL_HI = '#5ba5eb'
-NODE_RADIUS = 15
+NODE_RADIUS = 10
+MAX_LAYER_DRAW_LENGTH = 10
 
 
